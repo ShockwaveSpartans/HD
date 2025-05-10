@@ -1,0 +1,21 @@
+git clone https://github.com/ShockwaveSpartans/ECE2071_Project.git
+
+cd ECE2071_Project
+
+git checkout -b Version_num
+(create branch)
+
+git branch
+(check current branch)
+
+MAKE CHANGES
+
+git add .
+
+git status
+(Check changes)
+
+git commit -m "Version_num"
+
+git push -u origin Version_num
+(push your branch)
