@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#define FILTER_LENGTH 3
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,9 +52,14 @@ uint8_t MSB_8 = 0;
 uint8_t LSB_8 = 0;
 uint16_t ADC_output = 0;
 char string_1[40] = "\0";
-//uint16_t adc_raw[100];       // Stores raw values
-//uint16_t adc_filtered[100];  // Stores filtered output
-//uint16_t sample_index = 0;
+
+//filtering
+uint16_t ADC_output_array[3] = {0};
+uint8_t average_index = 0;
+uint16_t moving_average = 0;
+uint16_t temp_average = 0;
+uint8_t average_counter = 0;
+uint8_t filter_Buffer[2] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -296,11 +302,34 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
 	        ADC_output = ADC_output << 8;
 	        ADC_output = ADC_output | LSB_8;
 
-	        // Print raw_ADC_value into string_1
-	        //sprintf(string_1, "ADC output: %d\n", ADC_output);
+	        // filtering
+	        // moving average filter
+	        // store in ADC_output_array
+	        ADC_output_array[average_index] = ADC_output;
 
-	        // Transmit string_1 over UART under interrupt mode
-	        HAL_UART_Transmit_IT(&huart2, (uint8_t*)RX_Buffer, 2);
+	        if (average_counter > 2)
+	        {
+				moving_average = (ADC_output_array[0] + ADC_output_array[1] + ADC_output_array[2]) / 3;
+
+				temp_average = moving_average & 0xFF;
+				filter_Buffer[0] = temp_average;
+				temp_average = moving_average >> 8;
+				filter_Buffer[1] = temp_average;
+				HAL_UART_Transmit_IT(&huart2, (uint8_t*)filter_Buffer, 2);
+				//HAL_UART_Transmit_IT(&huart2, (uint8_t*)moving_average, 2);
+	        }
+	        else
+	        {
+				temp_average = ADC_output & 0xFF;
+				filter_Buffer[0] = temp_average;
+				temp_average = ADC_output >> 8;
+				filter_Buffer[1] = temp_average;
+				HAL_UART_Transmit_IT(&huart2, (uint8_t*)filter_Buffer, 2);
+	        }
+
+	        average_counter++;
+	        // average index has to go back to 0 after 2, making FIFO
+	        average_index = (average_counter - 1) % 3;
 
 	        HAL_SPI_Receive_IT(&hspi1, RX_Buffer, 2); // Receive through SPI in interrupt mode
 	    }
