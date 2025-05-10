@@ -23,7 +23,7 @@ typedef struct {
 #pragma pack(pop)
 
 #define SAMPLE_RATE 6400
-#define DURATION_SECONDS 10
+#define DURATION_SECONDS 60
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
         // Convert 12-bit unsigned to 16-bit signed PCM
         // 12-bit range: 0-4095 -> 16-bit range: -32768 to 32767
         buffer[samples_read++] = (int16_t)(((sample12bit - 2048) * 32767.0 / 2048.0));
-        printf("%x ", buffer[samples_read - 1]);
+        // printf("%x ", buffer[samples_read - 1]);
         //buffer[samples_read++] = (int16_t)((sample12bit - 2048) << 4);
     }
 
