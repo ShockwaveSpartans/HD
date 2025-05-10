@@ -12,9 +12,6 @@ Repo contains:
 1) Two STM32 project txt files (1 for Master, 1 for Slave)
 2) One Python file (read serial from UART2)
 3) One C file (Process binary file to create required files)
+4) Other non-code files
+5) README file
 
-How to start editing:
-1) Clone the repo
-2) Create branch
-3) Make changes
-4) Wait for admin to merge your changes to main project
