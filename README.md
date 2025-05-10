@@ -9,9 +9,9 @@ Team Members
 5) Liew Chong Jun (33522383)
 
 Repo contains:
-2 STM32 project txt files (1 for Master, 1 for Slave)
-1 Python file (read serial from UART2)
-1 C file (Process binary file to create required files)
+1) Two STM32 project txt files (1 for Master, 1 for Slave)
+2) One Python file (read serial from UART2)
+3) One C file (Process binary file to create required files)
 
 How to start editing:
 1) Clone the repo
