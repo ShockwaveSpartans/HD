@@ -19,3 +19,15 @@ git commit -m "Version_num"
 
 git push -u origin Version_num
 (push your branch)
+
+(YOU SHOULD SEE)
+Enumerating objects: 11, done.
+Counting objects: 100% (11/11), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (7/7), done.
+Writing objects: 100% (7/7), 5.53 KiB | 5.53 MiB/s, done.
+Total 7 (delta 2), reused 0 (delta 0), pack-reused 0
+remote: Resolving deltas: 100% (2/2), completed with 1 local object.
+To https://github.com/ShockwaveSpartans/ECE2071_Project.git
+   761769d..55ade6e  Version_3 -> Version_3
+branch 'Version_3' set up to track 'origin/Version_3'.
