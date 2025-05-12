@@ -1,5 +1,14 @@
 import serial
+import numpy as np
 import sys, subprocess, time, os
+import matplotlib.pyplot as plt
+import csv
+
+
+# Open serial port
+ser = serial.Serial(port="COM10", baudrate = 921600, bytesize=8, parity="N", stopbits=1, timeout=5)
+
+print(f"Serial port: {ser.name}")
 
 print("\n")
 print("====================================================================")
@@ -10,108 +19,110 @@ print("\n2. Distance Trigger Mode")
 print("====================================================================")
 print("\n")
 
-userInput = 0
-userInput = int(input())
+user_input = int(input("\nEnter an option: \n"))
+print("\n")
 
-if (userInput == 1):
-    userTime = 0
-    userTime = int(input("\nSeconds: \n"))
+if user_input == 1:
+    print("====================================================================")
+    print("You have selected Manual Recording Mode ")
+    print("====================================================================")
 
-    # Configuration
-    CHUNK_SIZE = 2        # Size of each read
-    SAMPLE_RATE = 6400
-    TIME = userTime 
-    #the wav file will be 5 second
-    TOTAL_BYTES = TIME * SAMPLE_RATE *CHUNK_SIZE
-    #TOTAL_BYTES = 100 * 1024  
-
-    # Open serial port
-    ser = serial.Serial(port="COM11", baudrate = 230400, bytesize=8, parity="N", stopbits=1, timeout=5)
-
-    print(f"[INFO] Serial port opened: {ser.name}")
-    ### send a flag for adc (FLAG= HUART2 RECEIVE)
-    ser.write(b'1')  
-    time.sleep(0.1)
-    ###
-    # Open binary file for writing raw ADC data
-    with open("Transfer_ADC_values.data", "ab") as file:
-        bytes_read = 0
-        while bytes_read < TOTAL_BYTES: #38400 byte for
-            chunk = ser.read(CHUNK_SIZE)  # Read 500 bytes
-            if not chunk:  # Handle potential read errors
-                print("\n No data received. Check serial connection.")
-                break
-            file.write(chunk)             # Write to file
-            bytes_read += len(chunk)
-            print(f"[INFO] {bytes_read}/{TOTAL_BYTES} bytes received...", end='\r')
-
-    # Close serial port
-    ser.close()
-    print("\nData sampling complete.")
+    time_input = float(input("\nEnter a time(second): \n"))
 
 
+if user_input == 2:
+    print("====================================================================")
+    print("You have selected Distance Trigger Mode ")
+    print("====================================================================")
 
-    print("\n")
-    file.close()
-    #file_2.close()
-    ser.close()
-    compileResult = subprocess.getstatusoutput(f"gcc read_serial.c -o read_serial")
-    codeOutput = subprocess.getstatusoutput(f"read_serial Transfer_ADC_values.data transfer.wav") #runs the executable with command line arguments
-    print(compileResult[0]) #prints 0 if compiled with no issues
-    print(compileResult[1]) #prints compilation errors, if any
-    print(codeOutput[0]) #prints 0 if the C program could run without any errors
-    print(codeOutput[1]) #prints any output displayed onto the terminal by the C program
 
-if (userInput == 2):
-    # Configuration
-    CHUNK_SIZE = 2                  # Match STM32's 2-byte samples
-    TIMEOUT_THRESHOLD = 1        # 250ms timeout (0.25 seconds)
-    
-    ser = serial.Serial(port="COM11", baudrate = 230400, bytesize=8, parity="N", stopbits=1, timeout=2)
+# Configuration
+CHUNK_SIZE = 1000         # Size of each read
+SAMPLE_RATE = 10000
+music_length = time_input * 2   #the wav file will be time input * 2 second
+TOTAL_BYTES = music_length * SAMPLE_RATE 
+#TOTAL_BYTES = 100 * 1024  
 
-    print(f"[INFO] Serial port opened: {ser.name}")
-    ser.write(b'2')                 # Enter distance trigger mode
-    time.sleep(0.1)                 # Let STM32 process
-    
-    with open("Transfer_ADC_values.data", "ab") as file:
-        bytes_read = 0
-        last_received_time = None
-        start_time = time.time()
-        
-        while True:
-            chunk = ser.read(CHUNK_SIZE)
-            current_time = time.time()
-            
-            if chunk:
-                # Write data and update timestamp
-                file.write(chunk)
-                bytes_read += len(chunk)
-                last_received_time = current_time
-                print(f"[INFO] {bytes_read} bytes received...", end='\r')
-            else:
-                # Check timeout conditions
-                if last_received_time:  # Had previous data
-                    if (current_time - last_received_time) > TIMEOUT_THRESHOLD:
-                        print("\nNo data for 250ms - Stopping")
-                        break
-                else:  # No data received yet
-                    if (current_time - start_time) > TIMEOUT_THRESHOLD:
-                        print("\nNo initial data - Check sensor")
-                        break
+amplitude_list = []
 
-    ser.close()
-    # Continue with WAV file creation...
-    print("\nData sampling complete.")
+print("\n\n")
+print("====================================================================")
+print("Data sampling starting...")
+print("====================================================================")
+print("\n\n")
+
+
+# Open binary file for writing raw ADC data
+with open("2outlier_ADC_values.data", "ab") as file:
+    bytes_read = 0
+    while bytes_read < TOTAL_BYTES:
+        # read in chunk size
+        chunk = ser.read(CHUNK_SIZE)
+        #check if there is data receive
+        if not chunk:  
+            print("\n No data received.")
+            break
+        file.write(chunk)             # Write to file
+
+        # convert the raw binary into decimal then append it
+        for i in range(0, len(chunk), 2):
+            decimal_chunk = int.from_bytes(chunk[i:i+2], byteorder='little')
+            amplitude_list.append(decimal_chunk)
+
+        # check the total byte size received
+        bytes_read += len(chunk)
+        print(f"{bytes_read}/{TOTAL_BYTES} bytes received...", end='\r')
+  
+# Close serial port
+ser.close()
+print("\n\n\n")
+print("====================================================================")
+print("Data sampling complete.")
+print("====================================================================")
 
 
 
-    print("\n")
-    file.close()
-    #file_2.close()
-    ser.close()
-    compileResult = subprocess.getstatusoutput(f"gcc read_serial.c -o read_serial")
-    codeOutput = subprocess.getstatusoutput(f"read_serial Transfer_ADC_values.data transfer.wav") #runs the executable with command line arguments
-    print(compileResult[0]) #prints 0 if compiled with no issues
-    print(compileResult[1]) #prints compilation errors, if any
-    print(codeOutput[0]) #prints 0 if the C program could run without any errors
-    print(codeOutput[1]) #prints any output displayed onto the terminal by the C program
+
+# Plot Graph
+half_samples = len(amplitude_list) // 2
+half_amplitude_list = amplitude_list[:half_samples]
+timing = np.linspace(0, time_input, len(half_amplitude_list))                # Time from 0 to input time (second)
+
+plt.figure(figsize=(10, 4))
+plt.plot(timing, half_amplitude_list, label='ADC Value')
+plt.title('ADC value vs Time Waveform')
+plt.xlabel('Time (s)')
+plt.ylabel('ADC Value')
+plt.grid(1)
+plt.legend()
+plt.savefig('waveform_plot.png', dpi=300, bbox_inches='tight')
+plt.close()
+
+
+
+# Plot CSV Graph
+with open('ADC_Value.csv', mode='w', newline='') as file:
+    writer = csv.writer(file)
+
+    # first row indicates the sample rate
+    writer.writerow(['Sampling Rate is', SAMPLE_RATE])
+
+    # write the ADC value for every row
+    for val in amplitude_list:
+        writer.writerow([val])
+
+print("CSV file saved as 'ADC_Value.csv'")
+
+
+
+
+
+print("\n")
+file.close()
+ser.close()
+compileResult = subprocess.getstatusoutput(f"gcc read_serial.c -o read_serial")
+codeOutput = subprocess.getstatusoutput(f"read_serial 2outlier_ADC_values.data 2outlier.wav") #runs the executable with command line arguments
+print(compileResult[0]) #prints 0 if compiled with no issues
+print(compileResult[1]) #prints compilation errors, if any
+print(codeOutput[0]) #prints 0 if the C program could run without any errors
+print(codeOutput[1]) #prints any output displayed onto the terminal by the C program
