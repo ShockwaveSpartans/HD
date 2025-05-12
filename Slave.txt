@@ -1,3 +1,4 @@
+SLAVE
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -23,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#define FILTER_LENGTH 3
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,6 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,10 +45,6 @@
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
-TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim6;
-TIM_HandleTypeDef htim7;
-
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -53,29 +52,15 @@ uint8_t RX_Buffer[2] = {0};
 uint8_t MSB_8 = 0;
 uint8_t LSB_8 = 0;
 uint16_t ADC_output = 0;
+char string_1[40] = "\0";
 
-uint16_t ADC_output_array[3];
+//filtering
+uint16_t ADC_output_array[3] = {0};
 uint8_t average_index = 0;
 uint16_t moving_average = 0;
-uint8_t average_counter = 1;
-
-char string_1[40] = "\0";
-//uint16_t adc_raw[100];       // Stores raw values
-//uint16_t adc_filtered[100];  // Stores filtered output
-//uint16_t sample_index = 0;
-
-///////ultrasonic
-int flag = 0;
-float distance = 0;
-uint16_t count_1 = 0;
-uint16_t count_2 = 0;
-uint8_t flagFromPython= 0; // 8 bits sent by python
-int manual_mode_flag = 1;    //  Manual operation flag
-int distance_mode_flag = 0;  // Distance trigger mode flag
-int distanceFlag=0;
-int distanceinRange=5;
-/////////
-
+uint16_t temp_average = 0;
+uint8_t average_counter = 0;
+uint8_t filter_Buffer[2] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -83,13 +68,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
-static void MX_TIM6_Init(void);
-static void MX_TIM1_Init(void);
-static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
-void delay_uS(uint16_t delay);
-void HCSR04_Read(void);
-//void HCSR04_Read();
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -128,18 +108,8 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_SPI1_Init();
-  MX_TIM6_Init();
-  MX_TIM1_Init();
-  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 HAL_SPI_Receive_IT(&hspi1, RX_Buffer, 2);
-//ULTRASONIC
-HAL_TIM_Base_Start(&htim6);
-HAL_TIM_IC_Start_IT(&htim1,TIM_CHANNEL_1);
-HAL_TIM_Base_Start_IT(&htim7);
-HAL_UART_Receive_IT(&huart2, &flagFromPython, 1);
-//
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -253,142 +223,6 @@ static void MX_SPI1_Init(void)
 }
 
 /**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_IC_InitTypeDef sConfigIC = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 32-1;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65535;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_IC_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
-  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
-  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-  sConfigIC.ICFilter = 0;
-  if (HAL_TIM_IC_ConfigChannel(&htim1, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-
-}
-
-/**
-  * @brief TIM6 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM6_Init(void)
-{
-
-  /* USER CODE BEGIN TIM6_Init 0 */
-
-  /* USER CODE END TIM6_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM6_Init 1 */
-
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 32-1;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 65535;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM6_Init 2 */
-
-  /* USER CODE END TIM6_Init 2 */
-
-}
-
-/**
-  * @brief TIM7 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM7_Init(void)
-{
-
-  /* USER CODE BEGIN TIM7_Init 0 */
-
-  /* USER CODE END TIM7_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM7_Init 1 */
-
-  /* USER CODE END TIM7_Init 1 */
-  htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 32000-1;
-  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 500-1;
-  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM7_Init 2 */
-
-  /* USER CODE END TIM7_Init 2 */
-
-}
-
-/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -404,7 +238,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 230400;
+  huart2.Init.BaudRate = 921600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -441,17 +275,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : PA6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD3_Pin */
   GPIO_InitStruct.Pin = LD3_Pin;
@@ -466,124 +290,77 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-////////ULTRASONIC
-void HAL_TIM_PeriodElapsedCallback (TIM_HandleTypeDef * htim)
-{
-	if (htim==&htim7)
-	{
-		HCSR04_Read();
-	}
-
-}
-void delay_uS(uint16_t delay)
-{
-    __HAL_TIM_SET_COUNTER(&htim6, 0);
-    while(__HAL_TIM_GET_COUNTER(&htim6) < delay)
-    {
-
-    }
-}
-
-void HCSR04_Read()
-{
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
-	delay_uS(10);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
-
-}
-//
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
-	if ((htim == &htim1) && (htim->Channel == 1))
-	{
-		if (flag == 0)
-		{
-			count_1 = HAL_TIM_ReadCapturedValue(&htim1, TIM_CHANNEL_1);
-			flag = 1;
-		}
-		else
-		{
-			count_2 = HAL_TIM_ReadCapturedValue(&htim1, TIM_CHANNEL_1);
-			__HAL_TIM_SET_COUNTER(htim, 0);
-			distance = (count_2 - count_1)/58.0;
-			flag = 0;
-			if (distance>distanceinRange)
-			{
-				distanceFlag=0;
-			}
-			else if (distance< distanceinRange)
-			{
-				distanceFlag=1;
-			}
-		}
-	}
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if (huart == &huart2)
-	{
-		if (flagFromPython == '1')
-		{
-			manual_mode_flag = 1;
-	        distance_mode_flag = 0;
-
-		}
-		else if (flagFromPython =='2')
-		{
-            manual_mode_flag = 0;
-            distance_mode_flag = 1;
-		}
-	}
-	HAL_UART_Receive_IT(&huart2, (uint8_t*)flagFromPython, 1);
-}
-
-
-
-
-
-///////
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
 {
 	// SLAVE
 	if (hspi == &hspi1)
-	{
-		//only open spi transmission when its in normal operation mode or when trigger mode is on AND distance is within range
-		if(manual_mode_flag || (distance_mode_flag && distanceFlag))
-		{
-			LSB_8 = RX_Buffer[0]; // extract the least significant 8 bits of the ADC value
-			MSB_8 = RX_Buffer[1]; // extract the most significant 8 bits of the ADC value
+	    {
+			// Using a flag to downsample from 20KHz to 10KHz
+			static uint8_t downsample_flag = 0;
 
-			// Construct 16-bit unsigned ADC value
-			ADC_output = MSB_8;
-			ADC_output = ADC_output << 8;
-			ADC_output = ADC_output | LSB_8;
 
-			// filtering
-			// moving average filter
-			// store in ADC_output_array
-			ADC_output_array[average_index] = ADC_output;
+	        LSB_8 = RX_Buffer[0]; // extract the least significant 8 bits of the ADC value
+	        MSB_8 = RX_Buffer[1]; // extract the most significant 8 bits of the ADC value
 
-			if (average_counter > 2)
-			{
-				moving_average = (ADC_output_array[0] + ADC_output_array[1] + ADC_output_array[2]) / 3;
-				// Transmit string_1 over UART under interrupt mode
-				HAL_UART_Transmit_IT(&huart2, (uint8_t*)RX_Buffer, 2);
-			}
-			else
-			{
-				// Transmit string_1 over UART under interrupt mode
-				HAL_UART_Transmit_IT(&huart2, (uint8_t*)RX_Buffer, 2);
-			}
+	        // Construct 16-bit unsigned ADC value
+	        ADC_output = MSB_8;
+	        ADC_output = ADC_output << 8;
+	        ADC_output = ADC_output | LSB_8;
 
-			average_counter++;
-			// average index has to go back to 0 after 2, making FIFO
-			average_index = (average_counter - 1) % 3;
+	        // filtering
+	        // moving average filter
+	        // store in ADC_output_array
 
-			HAL_SPI_Receive_IT(&hspi1, RX_Buffer, 2); // Receive through SPI in interrupt mode
+	        //
+	        if (ADC_output >= 0 && ADC_output <= 4095)
+	        {
+				ADC_output_array[average_index] = ADC_output;
 
-		}
-	}
+				if (average_counter > 2)
+				{
+					moving_average = (ADC_output_array[0] + ADC_output_array[1] + ADC_output_array[2]) / 3;
+
+					uint8_t sample_8bit = (uint8_t)(moving_average >> 4);
+
+	//				HAL_UART_Transmit_IT(&huart2, &sample_8bit, 1);
+
+					// transmitting the every next sample
+					if (downsample_flag == 0)
+					{
+						HAL_UART_Transmit_IT(&huart2, &sample_8bit, 1);
+					}
+
+
+				}
+				else
+				{
+					uint8_t sample_8bit = (uint8_t)(ADC_output >> 4);
+
+	//	            HAL_UART_Transmit_IT(&huart2, &sample_8bit, 1);
+
+					if (downsample_flag == 0)
+					{
+						HAL_UART_Transmit_IT(&huart2, &sample_8bit, 1);
+					}
+
+				}
+	        }
+
+	        else
+	        {
+	        	 uint8_t default_adc = 0;
+	        	 HAL_UART_Transmit_IT(&huart2, &default_adc, 1);
+	        }
+
+	        // Toggle between 0 and 1, sending every next sample
+	        downsample_flag ^= 1;
+
+	        average_counter++;
+	        // average index has to go back to 0 after 3, making FIFO
+	        average_index = (average_counter - 1) % 3;
+
+	        HAL_SPI_Receive_IT(&hspi1, RX_Buffer, 2); // Receive through SPI in interrupt mode
+	    }
 }
 
 /* USER CODE END 4 */

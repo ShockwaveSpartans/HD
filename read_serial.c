@@ -22,8 +22,8 @@ typedef struct {
 } wav_header;
 #pragma pack(pop)
 
-#define SAMPLE_RATE 6400
-#define DURATION_SECONDS 60
+#define SAMPLE_RATE 8000
+#define DURATION_SECONDS 10
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -33,14 +33,14 @@ int main(int argc, char *argv[]) {
 
     FILE *input_file = fopen(argv[1], "rb");
     if (!input_file) {
-        perror("Failed to open input file");
+        printf("Failed to open input file");
         return 1;
     }
 
     const size_t buffer_size = SAMPLE_RATE * DURATION_SECONDS;
     int16_t *buffer = calloc(buffer_size, sizeof(int16_t));
     if (!buffer) {
-        perror("Memory allocation failed");
+        printf("Memory allocation failed");
         fclose(input_file);
         return 1;
     }
@@ -62,25 +62,16 @@ int main(int argc, char *argv[]) {
         .flength = sizeof(wav_header) + buffer_size * sizeof(int16_t) - 8
     };
 
-    // Read and convert 12-bit data to 16-bit PCM
+    // Read and convert 8-bit data to 16-bit PCM
     size_t samples_read = 0;
-    uint8_t byte1, byte2;
+    uint8_t byte1;
     
     while (samples_read < buffer_size && fread(&byte1, sizeof(uint8_t), 1, input_file) == 1) {
-        if (fread(&byte2, sizeof(uint8_t), 1, input_file) != 1) 
-        {
-            break;
-        }
 
-        // Combine bytes to 12-bit value (assuming little-endian)
-        uint16_t sample12bit = (byte2 << 8) | byte1;
-        sample12bit &= 0x0FFF; // Ensure it's only 12 bits
-
-        // Convert 12-bit unsigned to 16-bit signed PCM
-        // 12-bit range: 0-4095 -> 16-bit range: -32768 to 32767
-        buffer[samples_read++] = (int16_t)(((sample12bit - 2048) * 32767.0 / 2048.0));
-        // printf("%x ", buffer[samples_read - 1]);
-        //buffer[samples_read++] = (int16_t)((sample12bit - 2048) << 4);
+        // Convert 8-bit unsigned [0,255] to 16-bit signed [-32768, 32767]
+        int16_t sample16bit = (int16_t)(((int)byte1 - 128) * 256); // Center at 0 and scale
+        buffer[samples_read++] = sample16bit;
+        //printf("%d ", sample16bit);
     }
 
     fclose(input_file);
@@ -88,7 +79,7 @@ int main(int argc, char *argv[]) {
     // Write WAV file
     FILE *output_file = fopen(argv[2], "wb");
     if (!output_file) {
-        perror("Failed to create output file");
+        printf("Failed to create output file");
         free(buffer);
         return EXIT_FAILURE;
     }
