@@ -4,31 +4,31 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#pragma pack(push, 1) // Ensure no padding in the struct
+//#pragma pack(push, 1) // Ensure no padding in the struct
 typedef struct {
-    char riff[4];                 // "RIFF"
-    int32_t flength;              // file length in bytes
-    char wave[4];                 // "WAVE"
-    char fmt[4];                  // "fmt "
-    int32_t chunk_size;           // size of FMT chunk (16 for PCM)
-    int16_t format_tag;           // 1=PCM
-    int16_t num_channel;          // 1=mono, 2=stereo
-    int32_t sample_rate;          // sampling rate (Hz)
+    char riff[4];                 // "RIFF" 
+    int32_t flength;              // file length in bytes 
+    char wave[4];                 // "WAVE" File Type Header 
+    char fmt[4];                  // "fmt " Format chunk marker 
+    int32_t chunk_size;           // size of FMT chunk
+    int16_t format_tag;           // 1 = PCM
+    int16_t num_channel;          // 1 = mono, 2 = stereo, channe
+    int32_t sample_rate;          // Sampling rate in samples per second 
     int32_t bytes_per_second;     // byte rate
-    int16_t bytes_per_sample;     // bytes per sample
-    int16_t bits_per_sample;      // bits per sample
+    int16_t bytes_per_sample;     // Number of bytes per sample
+    int16_t bits_per_sample;      // Number of bits per sample
     char data[4];                 // "data"
     int32_t dlength;              // data length in bytes
 } wav_header;
-#pragma pack(pop)
+//#pragma pack(pop)
 
-#define SAMPLE_RATE 8000
+#define SAMPLE_RATE 10000
 #define DURATION_SECONDS 10
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s <input_file> <output_file.wav>\n", argv[0]);
-        return EXIT_FAILURE;
+        printf("No enought argument");
+        return 1;
     }
 
     FILE *input_file = fopen(argv[1], "rb");
@@ -69,9 +69,9 @@ int main(int argc, char *argv[]) {
     while (samples_read < buffer_size && fread(&byte1, sizeof(uint8_t), 1, input_file) == 1) {
 
         // Convert 8-bit unsigned [0,255] to 16-bit signed [-32768, 32767]
-        int16_t sample16bit = (int16_t)(((int)byte1 - 128) * 256); // Center at 0 and scale
+        int16_t sample16bit = (int16_t)(((int)byte1 - 128) * 256); 
         buffer[samples_read++] = sample16bit;
-        //printf("%d ", sample16bit);
+        printf("%d ", sample16bit);
     }
 
     fclose(input_file);
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     if (!output_file) {
         printf("Failed to create output file");
         free(buffer);
-        return EXIT_FAILURE;
+        return 1;
     }
 
     // Write header and data
@@ -92,6 +92,6 @@ int main(int argc, char *argv[]) {
     fclose(output_file);
     free(buffer);
 
-    printf("Successfully created '%s' with %zu samples\n", argv[2], samples_read);
-    return EXIT_SUCCESS;
+    printf("Successfully created '%s' with %zu samples\n", argv[2], samples_read * 2);
+    return 0;
 }
