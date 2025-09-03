@@ -1,4 +1,4 @@
-# ECE2071_Project
+# HD project
 Audio recording and processing embedded system
 
 Team Members
